@@ -1,0 +1,227 @@
+<link rel="import" href="/fwpm/bower_components/polymer/polymer.html">
+<link rel="import" href="/fwpm/bower_components/iron-icon/iron-icons.html">
+<link rel="import" href="/fwpm/bower_components/paper-fab/paper-fab.html">
+<link rel="import" href="/fwpm/bower_components/paper-dialog/paper-dialog.html">
+<link rel="import" href="/fwpm/bower_components/paper-toast/paper-toast.html">
+<link rel="import" href="/fwpm/custom-ajax.html">
+<link rel="import" href="../period-single/period-single.html">
+<script src="../misc/headerParser.js"></script>
+
+<dom-module id="period-list">
+    <style>
+        paper-fab {
+            --paper-fab-background: #d9534f;
+            position: fixed;
+            right: 20px;
+            bottom: 20px;
+            z-index: 1;
+        }
+
+        paper-button {
+            padding-right: 15px;
+        }
+
+        paper-button.delete {
+            background: #d9534f;
+            color: white;
+            margin: 10px;
+        }
+
+        paper-button.edit {
+            background: #337ab7;
+            color: white;
+            margin: 10px;
+        }
+
+        paper-button.done {
+            background: #5cb85c;
+            color: white;
+            margin: 10px;
+        }
+
+        iron-icon.button-icon {
+            margin-right: 5px;
+        }
+
+        .period-actions {
+            float: right;
+        }
+
+        .button-link {
+            text-decoration: none;
+        }
+    </style>
+    <template>
+        <iron-ajax
+                id="reassignRequest"
+                url="https://apistaging.fiw.fhws.de/assignments/api/assignments/{{periodToReassign}}"
+                headers="[[requestHeaders]]"
+                method="POST"
+                handle-as="text">
+        </iron-ajax>
+
+        <custom-ajax
+                auth
+                id="ajax"
+                method="DELETE"
+                url="{{periodToDelete}}"
+                on-response="successfulDelete"
+                on-error="errorDelete"
+                debounce-duration="300">
+        </custom-ajax>
+
+        <paper-toast id="toast" text="Started assignment process."></paper-toast>
+
+        <custom-ajax auth id="load" auto="[[selected]]" url="{{url}}" handle-as="json" last-response="{{response}}"
+                     on-response="handler"></custom-ajax>
+        <template is="dom-repeat" items="{{response}}">
+            <period-single url="{{createSelfLink(item.periodId)}}" fwpm-url="{{fwpmUrl}}" selected=[[selected]]>
+                <div class="period-actions">
+                    <a hidden$="{{!item.triggered}}" class="button-link" href="/fwpm/electionconfig">
+                        <paper-button on-click="rerunAssignments" class="done">
+                            <iron-icon icon="refresh" class="button-icon"></iron-icon>
+                            Reassign
+                        </paper-button>
+                    </a>
+                    <a hidden$="{{!item.triggered}}" class="button-link" href="{{resultUrl}}">
+                        <paper-button on-click=showResult class="done">
+                            <iron-icon icon="list" class="button-icon"></iron-icon>
+                            Auswertung
+                        </paper-button>
+                    </a>
+                    <a hidden$="{{item.triggered}}" class="button-link" href="{{editPeriodUrl}}/{{item.periodId}}">
+                        <paper-button on-click="editPeriod" class="edit">
+                            <iron-icon icon="create" class="button-icon"></iron-icon>
+                            Bearbeiten
+                        </paper-button>
+                    </a>
+                    <paper-button on-click="openDeleteDialog" class="delete">
+                        <iron-icon icon="delete" class="button-icon"></iron-icon>
+                        Löschen
+                    </paper-button>
+                </div>
+            </period-single>
+        </template>
+        <a href="{{newPeriodUrl}}">
+            <paper-fab icon="add"></paper-fab>
+        </a>
+        <paper-dialog id="deleteDialog">
+            <h2>Wirklich löschen?</h2>
+
+            <div>Wollen Sie diese Wahlperiode wirklich löschen</div>
+            <div class="buttons">
+                <paper-button on-click="closeDialog">Abbrechen</paper-button>
+                <paper-button on-click="deleteFwpm">Löschen</paper-button>
+            </div>
+        </paper-dialog>
+
+        <paper-toast id="errorToast" duration="5000" text="Es ist leider ein Fehler aufgetreten"></paper-toast>
+    </template>
+    <script>
+        Polymer({
+            is: 'period-list',
+            properties: {
+                selected: {
+                    type: Boolean
+                },
+                url: {
+                    type: String, value: ""
+                },
+                templateUrl: {
+                    type: String, value: ""
+                },
+                editPeriodUrl: {
+                    type: String
+                },
+                newPeriodUrl: {
+                    type: String
+                },
+                resultUrl: {
+                    type: String
+                },
+                periodToDelete: {
+                    type: String
+                },
+                periodToReassign: {
+                    type: String
+                },
+                requestHeaders: {
+                    type: Object,
+                    value: {
+                        "Authorization": ""
+                    }
+                },
+                lastRequest: {
+                    type: Object
+                },
+                error: {
+                    type: Object
+                },
+                response: {
+                    type: Object
+                },
+                periodToEdit: {
+                    type: Object,
+                    notify: true
+                },
+                assignmentToShow: {
+                    type: Number,
+                    notify: true
+                },
+                fwpmUrl: {
+                    type: String
+                }
+            },
+            handler: function (e, request) {
+                var headers = request.xhr.getResponseHeader('Link');
+                var linkHeaders = parseLinkHeader(headers);
+                this.templateUrl = linkHeaders['template']['href'];
+            },
+
+            rerunAssignments: function (e) {
+                this.periodToReassign = e.model.item.periodId;
+                this.requestHeaders['Authorization'] = 'Bearer ' + document.cookie.split("=")[1].split("&")[0];
+                this.$.reassignRequest.generateRequest();
+                this.$.toast.open();
+            },
+
+            editPeriod: function (e) {
+                this.periodToEdit = e.model.item;
+            },
+
+            showResult: function (e) {
+                this.assignmentToShow = e.model.item.periodId;
+            },
+
+            openDeleteDialog: function (e) {
+                this.periodToDelete = this.createSelfLink(e.model.item.periodId);
+                this.$.deleteDialog.open();
+            },
+
+            closeDialog: function () {
+                this.periodToDelete = '';
+                this.$.deleteDialog.close();
+            },
+
+            deleteFwpm: function (e) {
+                this.$.ajax.generateRequest();
+                this.$.deleteDialog.close();
+            },
+
+            successfulDelete: function () {
+                this.updatePeriods();
+                this.fire('period-deleted');
+            },
+            errorDelete: function () {
+                this.$.errorToast.show();
+            },
+            createSelfLink: function (id) {
+                return this.templateUrl.replace("{PERIODID}", id);
+            },
+            updatePeriods: function () {
+                this.$.load.generateRequest();
+            }
+        });
+
+    </script>
+</dom-module>

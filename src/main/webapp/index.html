@@ -1,0 +1,25 @@
+<html>
+<head>
+  <title>ElectionAdmin</title>
+
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale1.0">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  
+  <script src="/fwpm/bower_components/webcomponentsjs/webcomponents.js"></script>
+  <link rel="import" href="periodList/my-periodList.html">
+  <link rel="import" href="createPeriod/my-createPeriod.html">
+  <!--<link rel="import" href="editPeriod/my-editPeriod.html">-->
+  <!--<link rel="import" href="period/my-singlePeriod.html">-->
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body unresolved>
+  <!--<my-editPeriod></my-editPeriod>-->
+  <my-createPeriod url="https://apistaging.fiw.fhws.de/electionConfig/api/electionConfig"></my-createPeriod>
+  <my-periodList url="https://apistaging.fiw.fhws.de/electionConfig/api/electionConfig"></my-periodList>
+ <!-- <my-createPeriod url="http://docker:8080/electionConfig/api/electionConfig"></my-createPeriod>
+  <my-periodList url="http://docker:8080/electionConfig/api/electionConfig"></my-periodList>-->
+</body>
+</html>

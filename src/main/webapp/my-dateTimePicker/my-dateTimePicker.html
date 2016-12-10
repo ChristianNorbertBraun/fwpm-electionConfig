@@ -1,0 +1,80 @@
+<link rel="import" href="/fwpm/bower_components/polymer/polymer.html">
+<link rel="import" href="/fwpm/bower_components/paper-dialog/paper-dialog.html">
+<link rel="import" href="/fwpm/bower_components/paper-button/paper-button.html">
+<link rel="import" href="/fwpm/bower_components/date-picker/paper-date-picker.html">
+<link rel="import" href="/fwpm/bower_components/time-picker/paper-time-picker.html">
+
+
+<dom-module id="my-dateTimePicker">
+    <style>
+        paper-button.date-button {
+            background: #337ab7;
+            color: white;
+            margin: 10px;
+        }
+    </style>
+    <template>
+        <paper-button class="date-button paper-date-picker-dialog" on-click="onSetDate" hidden$="{{autostart}}">{{button}}</paper-button>
+        <paper-dialog id="modal" modal>
+            <paper-date-picker id="picker" date="{{date}}" locale="de"></paper-date-picker>
+            <div class="buttons">
+                <paper-button dialog-dismiss>Abbruch</paper-button>
+                <paper-button dialog-confirm autofocus class="paper-time-picker-dialog" on-click="onSetTime">OK</paper-button>
+            </div>
+        </paper-dialog>
+        <paper-dialog id="dialog" modal class="paper-time-picker-dialog">
+            <paper-time-picker id="timePicker" hour="{{hour}}" , minute="{{minute}}"></paper-time-picker>
+            <div class="buttons">
+                <paper-button dialog-dismiss>Abbruch</paper-button>
+                <paper-button dialog-confirm on-click="onClose">OK</paper-button>
+            </div>
+        </paper-dialog>
+    </template>
+    <script>
+        Polymer({
+            is: 'my-dateTimePicker',
+            properties: {
+                button: {
+                    type: String, value: ""
+                },
+                value: {
+                    type: String, notify: true
+                },
+                date: {
+                    type: Date
+                },
+                hour: {
+                    type: Number
+                },
+                minute: {
+                    type: Number
+                },
+                autostart: {
+                    type: Boolean, value: false, observer:'autoStarted'
+                }
+            },
+
+            autoStarted: function() {
+                if (this.autostart) {
+                    this.onSetDate();
+                }
+            },
+            onSetDate: function() {
+                this.$.modal.open();
+            },
+            onSetTime: function() {
+                this.$.modal.close();
+                this.$.dialog.open();
+            },
+            onClose: function() {
+                this.$.dialog.close();
+                this.value = this.getDateAsString();
+            },
+            getDateAsString: function() {
+                return ("0" + this.date.getDate()).slice(-2) +"."+ ("0" + (this.date.getMonth()+1)).slice(-2) + "." + this.date.getFullYear() + " " +
+                        ("0" + this.hour).slice(-2) + ":" + ("0" + this.minute).slice(-2);
+            }
+        });
+
+    </script>
+</dom-module>

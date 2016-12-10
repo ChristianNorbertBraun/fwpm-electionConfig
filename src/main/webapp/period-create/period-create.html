@@ -1,0 +1,206 @@
+<link rel="import" href="/fwpm/bower_components/polymer/polymer.html">
+<link rel="import" href="/fwpm/bower_components/iron-input/iron-input.html">
+<link rel="import" href="/fwpm/bower_components/iron-form/iron-form.html">
+<link rel="import" href="/fwpm/bower_components/paper-input/paper-input.html">
+<link rel="import" href="/fwpm/bower_components/paper-button/paper-button.html">
+<link rel="import" href="/fwpm/bower_components/paper-icon-button/paper-icon-button.html">
+<link rel="import" href="/fwpm/bower_components/iron-icons/iron-icons.html">
+<link rel="import" href="/fwpm/bower_components/paper-card/paper-card.html">
+<link rel="import" href="/fwpm/bower_components/paper-toast/paper-toast.html">
+<link rel="import" href="/fwpm/custom-ajax.html">
+<link rel="import" href="/fwpm-index/web_components/fwpm-component.html">
+<link rel="import" href="../my-dateTimePicker/my-dateTimePicker.html">
+<link rel="import" href="../fwpm-chooser/fwpm-chooser.html">
+
+<dom-module id="period-create">
+    <style>
+        paper-card {
+            display: block;
+            margin: 24px;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .left {
+            width: 79%;
+            display: inline-block;
+        }
+
+        .right {
+            display: inline-block;
+        }
+
+        .card-actions {
+            text-align: right;
+        }
+
+        paper-button.save {
+            background: #5cb85c;
+            color: white;
+            margin: 10px;
+        }
+
+        paper-button.add {
+            background: #337ab7;
+            color: white;
+            margin: 10px;
+        }
+
+        paper-button.cancel {
+            background: #d9534f;
+            color: white;
+            margin: 10px;
+        }
+        #errorToast {
+            --paper-toast-background-color: red;
+            --paper-toast-color: white;
+        }
+        #successToast {
+            --paper-toast-background-color: green;
+            --paper-toast-color: white;
+        }
+    </style>
+    <template>
+
+        <form is="iron-form" action="/" id="basic">
+            <paper-card>
+                <div class="card-content">
+
+                    <paper-input name="title" label="Titel" value="{{period.title}}" required></paper-input>
+
+                    <paper-input class="left" name="startDate" label="Startdatum" value="{{period.startDate}}" required></paper-input>
+                    <my-dateTimePicker class="right" value="{{period.startDate}}" button="Startdatum"></my-dateTimePicker>
+
+                    <paper-input class="left" name="endDate" label="Enddatum" value="{{period.endDate}}" required></paper-input>
+
+                    <my-dateTimePicker class="right pull-right" value="{{period.endDate}}" button="Enddatum"></my-dateTimePicker>
+                    <p>FWPMs: [[period.fwpms.length]] ausgewählt</p>
+                    <fwpm-chooser values="{{period.fwpms}}" all-fwpms="{{allFWPMs}}"></fwpm-chooser>
+                    <p>Erinnerungsdaten:</p>
+
+                    <template is="dom-repeat" items="{{mydates}}">
+                        <p class="left">{{item}}</p>
+                        <paper-button on-click="delete" class="right cancel">
+                            <iron-icon icon="delete"></iron-icon>
+                            Löschen
+                        </paper-button>
+                    </template>
+
+                    <my-dateTimePicker value="{{reminder}}" button="Erinnerungsdatum"></my-dateTimePicker>
+                </div>
+                <div class="card-actions">
+                    <paper-button raised on-click="reset" class="cancel">
+                        <iron-icon icon="clear" class="button-icon"></iron-icon>
+                        Zurücksetzen
+                    </paper-button>
+                    <paper-button raised on-click="submit" class="save">
+                        <iron-icon icon="done" class="button-icon"></iron-icon>
+                        Speichern
+                    </paper-button>
+                </div>
+            </paper-card>
+
+        </form>
+
+        <paper-toast id="errorToast" duration="5000" text="Es ist leider ein Fehler aufgetreten"></paper-toast>
+        <paper-toast id="dateErrorToast" duration="5000" text="Start- oder Enddatum existieren bereits"></paper-toast>
+
+        <a id="redirect" href="{{redirectUrl}}"></a>
+
+        <custom-ajax
+                auth
+                id="ajax"
+                method="POST"
+                url="{{url}}"
+                content-type="application/json"
+                handle-as="json"
+                on-response="successfulResponse"
+                on-error="errorResponse"
+                debounce-duration="300">
+        </custom-ajax>
+
+        <custom-ajax auth auto="[[selected]]" url="{{allFwpmsUrl}}" handle-as="json" last-response="{{allFWPMs}}"></custom-ajax>
+
+
+    </template>
+    <script>
+        Polymer({
+            is: 'period-create',
+            properties: {
+                selected: {
+                  type: Boolean
+                },
+                url: {
+                    type: String
+                },
+                redirectUrl: {
+                    type: String
+                },
+                period: {
+                    type: Object,
+                    value: {
+                        "startDate": "", "endDate": "", "reminderDates": [], "fwpms": [], "title": ""
+                    }
+                },
+                allFwpmsUrl: {
+                    type: String
+                },
+                allFWPMs: {
+                    type: Array,
+                    value: []
+                },
+                mydates: {
+                    type: Array,
+                    value: [],
+                    notify: true
+                },
+                reminder: {
+                    type: Date,
+                    value: "",
+                    observer: 'changeListener'
+                }
+            },
+            reset: function () {
+                this.mydates = [];
+                this.$.basic.reset();
+                this.period.startDate = "";
+                this.period.endDate = "";
+            },
+            submit: function () {
+                var valid = this.$.basic.validate();
+                if (valid) {
+                    this.period.reminderDates = this.mydates;
+                    this.$.ajax.body = this.getAjaxBody();
+                    this.$.ajax.generateRequest();
+                }
+            },
+
+            delete: function (e) {
+                this.splice('mydates', e.model.index, 1);
+            },
+
+            changeListener: function () {
+                if (this.reminder !== "") {
+                    this.push('mydates', this.reminder)
+                }
+            },
+            successfulResponse: function (e, response) {
+                this.fire('period-created');
+                this.$.redirect.click();
+            },
+            errorResponse: function (e, error) {
+                var status = error.request.status;
+                if(status == 409) {
+                    this.$.dateErrorToast.open();
+                } else {
+                    this.$.errorToast.open();
+                }
+            },
+            getAjaxBody: function () {
+                var body = JSON.stringify(this.period);
+                return body;
+            }
+        });
+    </script>
+</dom-module>

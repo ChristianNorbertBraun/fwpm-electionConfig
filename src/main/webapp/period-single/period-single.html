@@ -1,0 +1,118 @@
+<link rel="import" href="/fwpm/bower_components/polymer/polymer.html">
+<link rel="import" href="/fwpm/bower_components/iron-input/iron-input.html">
+<link rel="import" href="/fwpm/bower_components/paper-card/paper-card.html">
+<link rel="import" href="/fwpm/bower_components/paper-dialog/paper-dialog.html">
+<link rel="import" href="/fwpm/bower_components/paper-dialog-scrollable/paper-dialog-scrollable.html">
+<link rel="import" href="/fwpm/custom-ajax.html">
+<link rel="import" href="/fwpm-index/web_components/fwpm-component.html">
+
+<dom-module id="period-single">
+    <style>
+        :host  {
+            display: block;
+            margin: 24px;
+        }
+
+        paper-card {
+            width: 100%;
+        }
+
+        paper-button.show {
+            background: #337ab7;
+            color: white;
+            margin: 10px;
+        }
+
+        paper-dialog {
+            width: 60%;
+        }
+
+        .dateBg{
+            background-color: #337ab7;
+            color: white;
+            border-radius: 5px 5px 5px 5px;
+            padding:2px;
+        }
+
+    </style>
+    <template>
+        <custom-ajax auth auto="[[selected]]" url="{{url}}" handle-as="json" last-response="{{periodResponse}}"></custom-ajax>
+        <paper-card>
+            <div class="card-content">Titel: {{periodResponse.title}}</div>
+            <div class="card-content">Start: {{periodResponse.startDate}}</div>
+            <div class="card-content">End: {{periodResponse.endDate}}</div>
+            <div class="card-content">FWPMS:
+                <paper-button on-click="showFwpms" class="show">{{periodResponse.fwpms.length}} FWPMS</paper-button>
+            </div>
+
+            <div class="card-content">Erinnerungen:</div>
+            <div class="card-content">
+                <template is="dom-repeat" items="{{periodResponse.reminderDates}}" as="reminderDate">
+                    <span class="dateBg">{{reminderDate}}&nbsp;</span>
+                </template>
+            </div>
+            <div class="card-actions">
+                <content></content>
+            </div>
+        </paper-card>
+
+        <paper-dialog id="fwpmsDialog" modal>
+            <h2>Teilnehmende FWPMs</h2>
+            <paper-dialog-scrollable>
+                <template is="dom-repeat" items="{{allParticipatedFwpms}}">
+                    <fwpm-component fwpm="{{item}}" details-hidden></fwpm-component>
+                </template>
+            </paper-dialog-scrollable>
+            <div class="buttons">
+                <paper-button on-click="closeDialog">OK</paper-button>
+            </div>
+        </paper-dialog>
+
+        <template is="dom-repeat" items="{{periodResponse.fwpms}}">
+            <custom-ajax auto auth="[[selected]]" url="{{generateUrl(item)}}" handle-as="json" last-response="{{currentFwpmResponse}}" on-response="getFwpm"></custom-ajax>
+        </template>
+
+        <content></content>
+    </template>
+    <script>
+        Polymer({
+            is: 'period-single',
+            properties: {
+                selected: {
+                  type: Boolean
+                },
+                url: {
+                    type: String, value: ""
+                },
+                fwpmUrl: {
+                    type: String
+                },
+                periodResponse: {
+                    type: Object
+                },
+                currentFwpmResponse: {
+                    type: Object
+                },
+                allParticipatedFwpms: {
+                    type: Array,
+                    value: []
+                }
+            },
+            showFwpms: function () {
+
+                this.$.fwpmsDialog.open();
+            },
+
+            closeDialog: function() {
+                this.$.fwpmsDialog.close();
+            },
+            generateUrl: function(id) {
+                return this.fwpmUrl.replace("{id}", id);
+            },
+            getFwpm: function() {
+                this.push('allParticipatedFwpms', this.currentFwpmResponse);
+            }
+
+        });
+    </script>
+</dom-module>
